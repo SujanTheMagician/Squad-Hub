@@ -1,0 +1,21 @@
+name: Keep Supabase awake
+
+# Free Supabase projects pause after ~7 days without activity. A daily query prevents that.
+on:
+  schedule:
+    - cron: '30 3 * * *' # 09:00 IST
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query the database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_URL/rest/v1/posts?select=id&limit=1" -H "apikey: $SUPABASE_PUBLISHABLE_KEY")
+          echo "Supabase responded with HTTP $status"
+          # 200 or 401/403 (no anonymous access) both mean the database answered.
+          case "$status" in 200|401|403) exit 0 ;; *) exit 1 ;; esac
