@@ -7,7 +7,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   admin: 'Admin',
 };
 export type Squad = 91 | 92 | 93;
-export type PostType = 'note' | 'project' | 'idea' | 'resource';
+export type PostType = 'note' | 'project' | 'idea' | 'resource' | 'doubt';
 
 export const SQUADS: Squad[] = [91, 92, 93];
 
@@ -16,6 +16,7 @@ export const POST_TYPE_LABELS: Record<PostType, string> = {
   project: 'Project',
   idea: 'Idea',
   resource: 'Resource',
+  doubt: 'Doubt',
 };
 
 export type Profile = {
@@ -83,7 +84,7 @@ export type Message = {
 
 export type AppNotification = {
   id: string;
-  kind: 'post' | 'announcement' | 'comment' | 'event';
+  kind: 'post' | 'announcement' | 'comment' | 'event' | 'answer' | 'birthday' | 'update';
   title: string;
   body: string;
   post_id: string | null;

@@ -20,7 +20,8 @@ import { useSession } from '@/providers/session';
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
-const POST_TYPES = Object.keys(POST_TYPE_LABELS) as PostType[];
+// Doubts can be read here but are posted from 1.4.
+const POST_TYPES = (Object.keys(POST_TYPE_LABELS) as PostType[]).filter((type) => type !== 'doubt');
 
 /** 2x2 grid of post types; the selected one fills with its colour. */
 function TypePicker({ value, onChange }: { value: PostType; onChange: (type: PostType) => void }) {
@@ -61,6 +62,7 @@ const BODY_PLACEHOLDER: Record<PostType, string> = {
   project: 'What does it do, what did you use, what did you learn?',
   idea: 'What is the idea, and who would you need to build it?',
   resource: 'Why is this useful?',
+  doubt: 'What are you stuck on?',
 };
 
 export default function NewPostScreen() {

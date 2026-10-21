@@ -18,6 +18,9 @@ const KIND_ICON: Record<AppNotification['kind'], { icon: ComponentProps<typeof I
   announcement: { icon: 'megaphone', color: TypeColors.project },
   comment: { icon: 'chatbubble-ellipses', color: TypeColors.note },
   event: { icon: 'calendar', color: TypeColors.idea },
+  answer: { icon: 'checkmark-circle', color: TypeColors.resource },
+  birthday: { icon: 'gift', color: TypeColors.doubt },
+  update: { icon: 'sparkles', color: TypeColors.project },
 };
 
 export default function NotificationsScreen() {

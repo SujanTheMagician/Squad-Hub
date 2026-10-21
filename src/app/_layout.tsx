@@ -11,6 +11,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { NewVersionBanner } from '@/components/new-version-banner';
 import { Colors, FontFamily } from '@/constants/theme';
 import { usePushNavigation } from '@/lib/push';
 import { SessionProvider, useSession } from '@/providers/session';
@@ -35,6 +36,7 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
   }
 
   return (
+    <>
     <Stack
       screenOptions={{
         headerShadowVisible: false,
@@ -68,6 +70,8 @@ function RootNavigator({ fontsLoaded }: { fontsLoaded: boolean }) {
         <Stack.Screen name="sign-in" options={{ headerShown: false, animation: 'fade' }} />
       </Stack.Protected>
     </Stack>
+    <NewVersionBanner />
+    </>
   );
 }
 

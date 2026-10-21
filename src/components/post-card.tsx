@@ -17,6 +17,7 @@ export const TYPE_ICONS: Record<PostType, ComponentProps<typeof Ionicons>['name'
   project: 'rocket',
   idea: 'bulb',
   resource: 'link',
+  doubt: 'help-circle',
 };
 
 export function SquadPill({ squad }: { squad: Squad | null }) {
