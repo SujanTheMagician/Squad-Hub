@@ -49,3 +49,6 @@ service-account*.json
 # Real member list (personal data) stays on this machine
 supabase/seed_allowlist.sql
 supabase/*.local.sql
+
+# Local editor/assistant settings
+.claude/
