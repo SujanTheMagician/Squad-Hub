@@ -11,6 +11,15 @@ on:
       - 'package.json'
       - 'package-lock.json'
   workflow_dispatch:
+    inputs:
+      notify:
+        description: 'Send everyone a "Squad Hub updated" push'
+        type: boolean
+        default: false
+      message:
+        description: "What's new (shown in the notification)"
+        type: string
+        default: 'Restart the app to get the latest version.'
 
 concurrency:
   group: eas-update
@@ -43,3 +52,25 @@ jobs:
 
       - name: Publish update to the preview channel
         run: eas update --channel preview --environment preview --platform android --message "${{ github.event.head_commit.message || 'Manual update' }}" --non-interactive
+
+      # Push "Squad Hub updated" to everyone when the commit message contains [notify],
+      # or when run by hand with "notify" ticked. Needs the SUPABASE_URL and SUPABASE_SECRET_KEY secrets.
+      - name: Tell everyone about the update
+        if: inputs.notify || contains(github.event.head_commit.message, '[notify]')
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          INPUT_MESSAGE: ${{ inputs.message }}
+          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SECRET_KEY" ]; then
+            echo "::error::Add the SUPABASE_URL and SUPABASE_SECRET_KEY repository secrets."
+            exit 1
+          fi
+          # First line of the commit message without the tag, or the text typed in the manual run.
+          MESSAGE="${INPUT_MESSAGE:-$(printf '%s' "$COMMIT_MESSAGE" | head -n1 | sed 's/\[notify\]//g; s/^ *//; s/ *$//')}"
+          BODY=$(jq -n --arg m "$MESSAGE" '{message: $m}')
+          curl --fail-with-body -sS -X POST "$SUPABASE_URL/rest/v1/rpc/notify_app_update" \
+            -H "apikey: $SUPABASE_SECRET_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$BODY"

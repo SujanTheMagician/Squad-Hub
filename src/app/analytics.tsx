@@ -1,16 +1,56 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 import { Avatar } from '@/components/avatar';
 import { ThemedText } from '@/components/themed-text';
+import { PressableScale } from '@/components/ui/pressable-scale';
 import { MaxContentWidth, Radius, SquadChartColors, Spacing } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
+import { timeAgo } from '@/lib/posts';
+import { fetchDirectory } from '@/lib/profile';
 import { supabase } from '@/lib/supabase';
 import { POST_TYPE_LABELS, type PostType, type Squad } from '@/lib/types';
+
+const STORAGE_LIMIT_BYTES = 1024 * 1024 * 1024;
+
+type AppError = { id: string; message: string; fatal: boolean; app_version: string | null; platform: string | null; created_at: string };
+
+type Extras = {
+  joined: number;
+  withPhoto: number;
+  withPhone: number;
+  withBirthday: number;
+  storageBytes: number;
+  errors: AppError[];
+};
+
+async function loadExtras(): Promise<Extras> {
+  const [members, storage, errors] = await Promise.all([
+    fetchDirectory(),
+    supabase.rpc('storage_usage'),
+    supabase.from('app_errors').select('id, message, fatal, app_version, platform, created_at').order('created_at', { ascending: false }).limit(10),
+  ]);
+  const joined = members.filter((m) => m.joined);
+  const buckets = (storage.data ?? {}) as Record<string, number>;
+  return {
+    joined: joined.length,
+    withPhoto: joined.filter((m) => m.avatar_url).length,
+    withPhone: joined.filter((m) => m.phone).length,
+    withBirthday: joined.filter((m) => m.birthday).length,
+    storageBytes: Object.values(buckets).reduce((sum, bytes) => sum + Number(bytes), 0),
+    errors: (errors.data ?? []) as AppError[],
+  };
+}
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
 
 type Analytics = {
   members: { squad: Squad; invited: number; joined: number }[] | null;
@@ -144,10 +184,12 @@ export default function AnalyticsScreen() {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const squadColor = (squad: Squad) => SquadChartColors[scheme][squad];
   const [data, setData] = useState<Analytics | null>(null);
+  const [extras, setExtras] = useState<Extras | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
+    loadExtras().then(setExtras).catch(() => setExtras(null));
     const { data: result, error: rpcError } = await supabase.rpc('batch_analytics');
     setRefreshing(false);
     if (rpcError) {
@@ -202,6 +244,19 @@ export default function AnalyticsScreen() {
         <Stat icon="chatbubbles-outline" label="Messages" value={String(data.totals.messages)} />
       </Animated.View>
 
+      <PressableScale
+        onPress={() => router.push('/students')}
+        style={[styles.studentsButton, { backgroundColor: theme.primarySoft, borderColor: theme.primary }]}>
+        <Ionicons name="people" size={20} color={theme.primary} />
+        <View style={styles.flex}>
+          <ThemedText type="smallBold">All students</ThemedText>
+          <ThemedText type="caption" themeColor="textSecondary">
+            NAMES, PHONES, BIRTHDAYS, WHO HASN&apos;T JOINED · EXPORT CSV
+          </ThemedText>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={theme.primary} />
+      </PressableScale>
+
       <Card title="Members signed in" subtitle="JOINED OUT OF INVITED, BY SQUAD" delay={80}>
         {members.map((m, i) => (
           <BarRow
@@ -254,6 +309,56 @@ export default function AnalyticsScreen() {
           </View>
         ))}
       </Card>
+
+      {extras && (
+        <>
+          <Card title="Profile details" subtitle="OUT OF MEMBERS WHO HAVE SIGNED IN" delay={480}>
+            <BarRow label="Photo" value={extras.withPhoto} max={extras.joined} color={theme.primary} delay={0} valueLabel={`${extras.withPhoto}/${extras.joined}`} />
+            <BarRow label="Phone" value={extras.withPhone} max={extras.joined} color={theme.primary} delay={80} valueLabel={`${extras.withPhone}/${extras.joined}`} />
+            <BarRow label="Birthday" value={extras.withBirthday} max={extras.joined} color={theme.primary} delay={160} valueLabel={`${extras.withBirthday}/${extras.joined}`} />
+          </Card>
+
+          <Card title="Storage" subtitle="FREE PLAN: 1 GB" delay={560}>
+            <BarRow
+              label="Used"
+              value={extras.storageBytes}
+              max={STORAGE_LIMIT_BYTES}
+              color={extras.storageBytes > STORAGE_LIMIT_BYTES * 0.8 ? theme.danger : theme.primary}
+              delay={0}
+              valueLabel={formatBytes(extras.storageBytes)}
+            />
+          </Card>
+
+          <Card title="App errors" subtitle={extras.errors.length ? 'LATEST 10 · LONG-PRESS TO CLEAR ALL' : 'NONE REPORTED'} delay={640}>
+            {extras.errors.map((e) => (
+              <Pressable
+                key={e.id}
+                onLongPress={() =>
+                  Alert.alert('Clear all app errors?', 'Do this after you have fixed them.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Clear',
+                      style: 'destructive',
+                      onPress: async () => {
+                        await supabase.from('app_errors').delete().lte('created_at', new Date().toISOString());
+                        load();
+                      },
+                    },
+                  ])
+                }
+                style={styles.errorRow}>
+                <ThemedText type="small" numberOfLines={2} style={e.fatal && { color: theme.danger }}>
+                  {e.fatal ? 'CRASH: ' : ''}
+                  {e.message}
+                </ThemedText>
+                <ThemedText type="caption" themeColor="textSecondary">
+                  {timeAgo(e.created_at)} · v{e.app_version ?? '?'} · {e.platform ?? 'unknown'}
+                </ThemedText>
+              </Pressable>
+            ))}
+          </Card>
+        </>
+      )}
 
       <ThemedText type="caption" themeColor="textSecondary" style={styles.footnote}>
         {data.totals.comments} COMMENTS · {data.totals.votes} LIKES IN TOTAL
@@ -381,6 +486,17 @@ const styles = StyleSheet.create({
   },
   rank: {
     width: 16,
+  },
+  studentsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    padding: Spacing.three,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+  },
+  errorRow: {
+    gap: 2,
   },
   footnote: {
     textAlign: 'center',

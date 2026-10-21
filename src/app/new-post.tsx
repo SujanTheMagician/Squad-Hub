@@ -18,7 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { POST_TYPE_LABELS, SQUADS, type PostType, type Squad } from '@/lib/types';
 import { useSession } from '@/providers/session';
 
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_BYTES = 25 * 1024 * 1024;
 
 const POST_TYPES = Object.keys(POST_TYPE_LABELS) as PostType[];
 
@@ -61,6 +61,7 @@ const BODY_PLACEHOLDER: Record<PostType, string> = {
   project: 'What does it do, what did you use, what did you learn?',
   idea: 'What is the idea, and who would you need to build it?',
   resource: 'Why is this useful?',
+  doubt: 'What are you stuck on? Add the error, code or question so others can help.',
 };
 
 export default function NewPostScreen() {
@@ -86,7 +87,7 @@ export default function NewPostScreen() {
     if (result.canceled) return;
     const asset = result.assets[0];
     if (asset.size && asset.size > MAX_FILE_BYTES) {
-      Alert.alert('File too large', 'Files must be under 10 MB. Upload bigger files to Google Drive and paste the link instead.');
+      Alert.alert('File too large', 'Files must be under 25 MB. Upload bigger files to Google Drive and paste the link instead.');
       return;
     }
     setFile(asset);
@@ -123,14 +124,14 @@ export default function NewPostScreen() {
     }
   }
 
-  const canAttach = type === 'note' || type === 'resource' || type === 'project';
+  const canAttach = type !== 'idea';
 
   return (
     <ThemedView style={styles.container}>
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
         <TypePicker value={type} onChange={setType} />
         <TextField label="Title" value={title} onChangeText={setTitle} maxLength={140} placeholder="Give it a clear title" />
-        {(type === 'note' || type === 'resource') && (
+        {(type === 'note' || type === 'resource' || type === 'doubt') && (
           <TextField label="Subject or module (optional)" value={subject} onChangeText={setSubject} placeholder="e.g. DSA, React, DBMS" />
         )}
         <TextField label="Description" value={body} onChangeText={setBody} multiline placeholder={BODY_PLACEHOLDER[type]} />
@@ -166,7 +167,11 @@ export default function NewPostScreen() {
             style={[styles.attach, { borderColor: file ? theme.primary : theme.border, backgroundColor: theme.backgroundElement }]}>
             <Ionicons name={file ? 'document-attach' : 'cloud-upload-outline'} size={20} color={theme.primary} />
             <ThemedText type="small" style={styles.flex} numberOfLines={1}>
-              {file ? file.name : type === 'project' ? 'Attach a screenshot (optional)' : 'Attach a PDF or image (max 10 MB)'}
+              {file
+                ? file.name
+                : type === 'project' || type === 'doubt'
+                  ? 'Attach a screenshot (optional)'
+                  : 'Attach a PDF or image (max 25 MB)'}
             </ThemedText>
             {file && (
               <Pressable onPress={() => setFile(null)} hitSlop={8}>

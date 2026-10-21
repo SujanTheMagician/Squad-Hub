@@ -17,6 +17,7 @@ export const TYPE_ICONS: Record<PostType, ComponentProps<typeof Ionicons>['name'
   project: 'rocket',
   idea: 'bulb',
   resource: 'link',
+  doubt: 'help-circle',
 };
 
 export function SquadPill({ squad }: { squad: Squad | null }) {
@@ -41,7 +42,7 @@ export function PostCard({ post, index = 0 }: { post: FeedPost; index?: number }
         onPress={() => router.push({ pathname: '/post/[id]', params: { id: post.id } })}
         style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border, shadowColor: theme.shadow }]}>
         <View style={styles.header}>
-          <Avatar name={post.author_name} squad={post.author_squad} size={36} />
+          <Avatar name={post.author_name} squad={post.author_squad} uri={post.author_avatar} size={36} />
           <View style={styles.flex}>
             <View style={styles.row}>
               <ThemedText type="smallBold" numberOfLines={1} style={styles.shrink}>
@@ -64,6 +65,18 @@ export function PostCard({ post, index = 0 }: { post: FeedPost; index?: number }
               {POST_TYPE_LABELS[post.type].toUpperCase()}
             </ThemedText>
           </View>
+          {post.type === 'doubt' && (
+            <View style={[styles.typeBadge, { backgroundColor: post.accepted_comment_id ? '#10B9811F' : theme.backgroundSelected }]}>
+              <Ionicons
+                name={post.accepted_comment_id ? 'checkmark-circle' : 'time-outline'}
+                size={12}
+                color={post.accepted_comment_id ? '#10B981' : theme.textSecondary}
+              />
+              <ThemedText type="caption" style={{ color: post.accepted_comment_id ? '#10B981' : theme.textSecondary }}>
+                {post.accepted_comment_id ? 'SOLVED' : 'OPEN'}
+              </ThemedText>
+            </View>
+          )}
           {post.subject && (
             <ThemedText type="caption" themeColor="textSecondary" numberOfLines={1} style={styles.shrink}>
               {post.subject}

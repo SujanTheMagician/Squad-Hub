@@ -1,14 +1,21 @@
 import { PostList } from '@/components/post-list';
+import { TypeColors } from '@/constants/theme';
+import type { PostType } from '@/lib/types';
+
+const TYPE_OPTIONS: { value: PostType[]; label: string; color?: string }[] = [
+  { value: ['idea'], label: 'Ideas', color: TypeColors.idea },
+  { value: ['doubt'], label: 'Doubts', color: TypeColors.doubt },
+];
 
 export default function IdeasScreen() {
   return (
     <PostList
-      title="Ideas"
-      subtitle="Pitch it, upvote it, build it together"
-      types={['idea']}
+      title="Ideas & doubts"
+      subtitle="Pitch an idea, or ask the batch for help"
+      typeOptions={TYPE_OPTIONS}
       newPostType="idea"
       emptyIcon="bulb-outline"
-      emptyText="No ideas yet. Pitch one and find teammates to build it."
+      emptyText="Nothing here yet. Pitch an idea or ask a doubt with the + button."
     />
   );
 }

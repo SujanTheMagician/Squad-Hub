@@ -1,7 +1,8 @@
 import type { Session } from '@supabase/supabase-js';
 import { createContext, use, useCallback, useEffect, useState, type PropsWithChildren } from 'react';
+import { AppState } from 'react-native';
 
-import { registerForPush } from '@/lib/push';
+import { registerForPush, unregisterForPush } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 import type { Profile } from '@/lib/types';
 
@@ -15,8 +16,9 @@ type SessionContextValue = {
   signOut: () => Promise<void>;
 };
 
-// push_token is not readable by members, so list the columns explicitly.
-const PROFILE_COLUMNS = 'id, email, full_name, squad, role, bio, skills, github, linkedin, leetcode';
+// Phone, birthday and push tokens are not readable from the table, so list the columns explicitly.
+const PROFILE_COLUMNS =
+  'id, email, full_name, squad, role, bio, skills, github, linkedin, leetcode, avatar_url, celebrate_birthday, notify_posts, notify_chat, onboarded_at';
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
@@ -42,9 +44,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
     setProfile(data as Profile | null);
     if (data) {
       // Fire and forget: push needs FCM set up, and the app works fine without it.
-      registerForPush(userId);
+      registerForPush();
+      supabase.rpc('touch_last_seen').then(() => {});
     }
   }, []);
+
+  // "Last seen" for the Admin / CM students list, refreshed whenever the app comes back to the foreground.
+  useEffect(() => {
+    if (!session) return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') supabase.rpc('touch_last_seen').then(() => {});
+    });
+    return () => subscription.remove();
+  }, [session]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -70,6 +82,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     isModerator: profile?.role === 'admin' || profile?.role === 'campus_manager' || profile?.role === 'squad_lead',
     refreshProfile: () => loadProfile(session?.user.id),
     signOut: async () => {
+      await unregisterForPush();
       await supabase.auth.signOut();
     },
   };

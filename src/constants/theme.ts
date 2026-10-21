@@ -57,6 +57,7 @@ export const TypeColors = {
   project: '#E3262E',
   idea: '#F59E0B',
   resource: '#10B981',
+  doubt: '#EC4899',
 } as const;
 
 /** Plus Jakarta Sans weights, loaded in the root layout. Android needs one family per weight. */

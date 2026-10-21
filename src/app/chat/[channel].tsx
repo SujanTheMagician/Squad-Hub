@@ -45,7 +45,7 @@ function Bubble({ message, mine, showAuthor, onLongPress }: { message: Message; 
   return (
     <Animated.View entering={FadeInUp.duration(250)} style={styles.theirRow}>
       <View style={styles.avatarSlot}>
-        {showAuthor && <Avatar name={message.author?.full_name ?? 'Member'} squad={squad} size={30} />}
+        {showAuthor && <Avatar name={message.author?.full_name ?? 'Member'} squad={squad} uri={message.author?.avatar_url} size={30} />}
       </View>
       <Pressable
         onLongPress={onLongPress}
