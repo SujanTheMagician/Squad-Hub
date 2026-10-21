@@ -50,5 +50,3 @@ service-account*.json
 supabase/seed_allowlist.sql
 supabase/*.local.sql
 
-# Local editor/assistant settings
-.claude/
