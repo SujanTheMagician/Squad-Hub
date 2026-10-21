@@ -1,5 +1,8 @@
+import * as Linking from 'expo-linking';
+import { Share } from 'react-native';
+
 import { supabase, UPLOADS_BUCKET } from '@/lib/supabase';
-import type { Announcement, Comment, FeedPost, PostType, Squad } from '@/lib/types';
+import { POST_TYPE_LABELS, type Announcement, type Comment, type FeedPost, type PostType, type Squad } from '@/lib/types';
 
 export type SquadFilter = Squad | 'all';
 
@@ -83,7 +86,7 @@ export async function reportContent(target: { postId?: string; commentId?: strin
 export async function fetchComments(postId: string) {
   const { data, error } = await supabase
     .from('comments')
-    .select('*, author:profiles(full_name, squad)')
+    .select('*, author:profiles(full_name, squad, avatar_url)')
     .eq('post_id', postId)
     .order('created_at');
   if (error) throw error;
@@ -93,6 +96,20 @@ export async function fetchComments(postId: string) {
 export async function addComment(postId: string, body: string) {
   const { error } = await supabase.from('comments').insert({ post_id: postId, body });
   if (error) throw error;
+}
+
+/** The asker marks the comment that solved their doubt (or passes null to unmark it). */
+export async function acceptAnswer(postId: string, commentId: string | null) {
+  const { error } = await supabase.rpc('accept_answer', { post: postId, answer: commentId });
+  if (error) throw error;
+}
+
+/** Opens the share sheet (WhatsApp, Telegram…) with a link that opens the post in the app. */
+export async function sharePost(post: FeedPost) {
+  const link = Linking.createURL(`/post/${post.id}`);
+  await Share.share({
+    message: `${POST_TYPE_LABELS[post.type]} on Squad Hub: ${post.title}\n\nOpen in the app: ${link}`,
+  });
 }
 
 export async function deleteComment(id: string) {

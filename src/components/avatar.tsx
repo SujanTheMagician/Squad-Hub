@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet } from 'react-native';
 
@@ -10,17 +11,27 @@ export function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '?';
 }
 
-/** Initials on a gradient in the member's squad colour (brand red for the Campus Manager). */
-export function Avatar({ name, squad, size = 40 }: { name: string; squad: Squad | null; size?: number }) {
+/** The member's photo, or initials on a gradient in their squad colour (brand red for the Campus Manager). */
+export function Avatar({ name, squad, uri, size = 40 }: { name: string; squad: Squad | null; uri?: string | null; size?: number }) {
   const base = squad ? SquadColors[squad] : BrandGradient[1];
   const colors = squad ? ([`${base}CC`, base] as const) : BrandGradient;
+  const shape = { width: size, height: size, borderRadius: size / 2 };
+
+  if (uri) {
+    return (
+      <Image
+        source={{ uri }}
+        style={[shape, { backgroundColor: base }]}
+        contentFit="cover"
+        transition={150}
+        cachePolicy="memory-disk"
+        accessibilityLabel={`${name}'s photo`}
+      />
+    );
+  }
 
   return (
-    <LinearGradient
-      colors={colors}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
+    <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.avatar, shape]}>
       <ThemedText style={[styles.text, { fontSize: size * 0.38, lineHeight: size * 0.5 }]}>{initials(name)}</ThemedText>
     </LinearGradient>
   );

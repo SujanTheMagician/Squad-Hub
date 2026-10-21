@@ -18,10 +18,10 @@ Notifications.setNotificationHandler({
 });
 
 /**
- * Asks for permission, gets this device's Expo push token and saves it on the profile.
+ * Asks for permission, gets this device's Expo push token and saves it for the signed-in member.
  * Silently does nothing on emulators, when permission is denied, or before FCM is configured.
  */
-export async function registerForPush(userId: string) {
+export async function registerForPush() {
   try {
     if (!Device.isDevice) return;
 
@@ -42,10 +42,22 @@ export async function registerForPush(userId: string) {
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
-    await supabase.from('profiles').update({ push_token: token }).eq('id', userId);
+    // One row per device, so members signed in on two phones get alerts on both.
+    const { error } = await supabase.rpc('register_push_token', { new_token: token });
+    if (error) throw error;
+    deviceToken = token;
   } catch (error) {
     console.log('[push] registration skipped:', error instanceof Error ? error.message : error);
   }
+}
+
+let deviceToken: string | null = null;
+
+/** Stops alerts to this phone; call before signing out so the next person doesn't get them. */
+export async function unregisterForPush() {
+  if (!deviceToken) return;
+  await supabase.rpc('unregister_push_token', { old_token: deviceToken });
+  deviceToken = null;
 }
 
 /** Opens the screen a tapped notification points at (its data.url). */

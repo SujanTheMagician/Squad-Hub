@@ -41,8 +41,11 @@ function Hero() {
             Squad Hub
           </ThemedText>
           <View style={styles.flex} />
-          <PressableScale onPress={() => router.push('/about')} style={styles.heroIcon} accessibilityLabel="About Squad Hub">
-            <Ionicons name="information-circle-outline" size={22} color="#FFFFFF" />
+          <PressableScale onPress={() => router.push('/search')} style={styles.heroIcon} accessibilityLabel="Search everything">
+            <Ionicons name="search" size={20} color="#FFFFFF" />
+          </PressableScale>
+          <PressableScale onPress={() => router.push('/leaderboard')} style={styles.heroIcon} accessibilityLabel="Leaderboard">
+            <Ionicons name="trophy-outline" size={20} color="#FFFFFF" />
           </PressableScale>
           <PressableScale
             onPress={() => router.push('/notifications')}

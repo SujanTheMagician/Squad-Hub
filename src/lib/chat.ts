@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { ChatChannel, Message, Squad } from '@/lib/types';
 
-const MESSAGE_SELECT = 'id, channel, author_id, body, created_at, author:profiles(full_name, squad, role)';
+const MESSAGE_SELECT = 'id, channel, author_id, body, created_at, author:profiles(full_name, squad, role, avatar_url)';
 
 export const CHANNEL_LABELS: Record<ChatChannel, string> = {
   batch: 'Whole batch',

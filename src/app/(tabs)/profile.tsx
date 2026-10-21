@@ -69,9 +69,12 @@ export default function ProfileScreen() {
           <Animated.View entering={FadeInDown.duration(500).springify()} style={[styles.card, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
             <LinearGradient colors={BrandGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cover} />
             <View style={styles.avatarRing}>
-              <View style={[styles.avatarBorder, { backgroundColor: theme.backgroundElement }]}>
-                <Avatar name={profile.full_name} squad={profile.squad} size={84} />
-              </View>
+              <PressableScale
+                onPress={() => router.push('/edit-profile')}
+                accessibilityLabel="Edit profile photo"
+                style={[styles.avatarBorder, { backgroundColor: theme.backgroundElement }]}>
+                <Avatar name={profile.full_name} squad={profile.squad} uri={profile.avatar_url} size={84} />
+              </PressableScale>
             </View>
             <View style={styles.identity}>
               <ThemedText type="subtitle" style={styles.center}>
@@ -107,10 +110,13 @@ export default function ProfileScreen() {
             <MenuRow icon="create-outline" label="Edit profile" onPress={() => router.push('/edit-profile')} />
             <MenuRow icon="notifications-outline" label="Notifications" onPress={() => router.push('/notifications')} />
             <MenuRow icon="calendar-outline" label="Deadlines & events" onPress={() => router.push('/events')} />
+            <MenuRow icon="people-outline" label={isAdmin ? 'Students list' : 'Batch members'} onPress={() => router.push('/students')} />
+            <MenuRow icon="trophy-outline" label="Leaderboard" onPress={() => router.push('/leaderboard')} />
             {isAdmin && <MenuRow icon="stats-chart-outline" label="Batch analytics" onPress={() => router.push('/analytics')} />}
             {isModerator && (
               <MenuRow icon="shield-outline" label={isAdmin ? 'Admin tools' : 'Moderation'} onPress={() => router.push('/admin')} />
             )}
+            <MenuRow icon="lock-closed-outline" label="Privacy & account" onPress={() => router.push('/privacy')} />
             <MenuRow icon="information-circle-outline" label="About Squad Hub" onPress={() => router.push('/about')} />
           </Animated.View>
 

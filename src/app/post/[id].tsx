@@ -17,6 +17,7 @@ import { TextField } from '@/components/ui/text-field';
 import { MaxContentWidth, Radius, Spacing, TypeColors } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
+  acceptAnswer,
   addComment,
   deleteComment,
   deletePost,
@@ -27,6 +28,7 @@ import {
   setBookmark,
   setPinned,
   setVote,
+  sharePost,
   timeAgo,
 } from '@/lib/posts';
 import { POST_TYPE_LABELS, type Comment, type FeedPost } from '@/lib/types';
@@ -100,6 +102,21 @@ export default function PostScreen() {
   }
 
   const isAuthor = post.author_id === session?.user.id;
+  const isDoubt = post.type === 'doubt';
+  // The accepted answer goes to the top.
+  const orderedComments = post.accepted_comment_id
+    ? [...comments].sort((a, b) => Number(b.id === post.accepted_comment_id) - Number(a.id === post.accepted_comment_id))
+    : comments;
+
+  async function toggleAccepted(commentId: string) {
+    if (!post) return;
+    const next = post.accepted_comment_id === commentId ? null : commentId;
+    setPost({ ...post, accepted_comment_id: next });
+    await acceptAnswer(post.id, next).catch((e) => {
+      Alert.alert('Could not update', e instanceof Error ? e.message : '');
+      load();
+    });
+  }
 
   async function toggleVote() {
     if (!post) return;
@@ -159,7 +176,9 @@ export default function PostScreen() {
         keyboardVerticalOffset={100}>
         <ScrollView contentContainerStyle={styles.content}>
           <Animated.View entering={FadeInDown.duration(400)} style={styles.authorRow}>
-            <Avatar name={post.author_name} squad={post.author_squad} size={44} />
+            <PressableScale onPress={() => router.push({ pathname: '/member/[id]', params: { id: post.author_id } })}>
+              <Avatar name={post.author_name} squad={post.author_squad} uri={post.author_avatar} size={44} />
+            </PressableScale>
             <View style={styles.flex}>
               <View style={styles.inline}>
                 <ThemedText type="smallBold">{post.author_name}</ThemedText>
@@ -202,6 +221,10 @@ export default function PostScreen() {
               <Ionicons name={post.bookmarked ? 'bookmark' : 'bookmark-outline'} size={22} color={theme.primary} />
               <ThemedText type="small">{post.bookmarked ? 'Saved' : 'Save'}</ThemedText>
             </Pressable>
+            <Pressable style={styles.action} onPress={() => sharePost(post)} accessibilityLabel="Share">
+              <Ionicons name="share-social-outline" size={21} color={theme.primary} />
+              <ThemedText type="small">Share</ThemedText>
+            </Pressable>
             {isModerator && (
               <Pressable
                 style={styles.action}
@@ -231,9 +254,18 @@ export default function PostScreen() {
           </View>
 
           <ThemedText type="heading">
-            {post.type === 'idea' ? 'Discussion · say "I want to build this!" to join' : `Comments (${comments.length})`}
+            {post.type === 'idea'
+              ? 'Discussion · say "I want to build this!" to join'
+              : isDoubt
+                ? `Answers (${comments.length})`
+                : `Comments (${comments.length})`}
           </ThemedText>
-          {comments.map((comment) => (
+          {isDoubt && isAuthor && comments.length > 0 && !post.accepted_comment_id && (
+            <ThemedText type="small" themeColor="textSecondary">
+              Got your answer? Tap “Accept answer” on the one that solved it. They get 15 leaderboard points.
+            </ThemedText>
+          )}
+          {orderedComments.map((comment) => (
             <Pressable
               key={comment.id}
               onLongPress={() => {
@@ -246,8 +278,20 @@ export default function PostScreen() {
                 ]);
               }}
               style={styles.commentRow}>
-              <Avatar name={comment.author?.full_name ?? 'Member'} squad={comment.author?.squad ?? null} size={32} />
-              <View style={[styles.comment, { backgroundColor: theme.backgroundElement, borderColor: theme.border }]}>
+              <Avatar name={comment.author?.full_name ?? 'Member'} squad={comment.author?.squad ?? null} uri={comment.author?.avatar_url} size={32} />
+              <View
+                style={[
+                  styles.comment,
+                  { backgroundColor: theme.backgroundElement, borderColor: comment.id === post.accepted_comment_id ? '#10B981' : theme.border },
+                ]}>
+              {comment.id === post.accepted_comment_id && (
+                <View style={styles.action}>
+                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                  <ThemedText type="caption" style={styles.accepted}>
+                    ACCEPTED ANSWER
+                  </ThemedText>
+                </View>
+              )}
               <ThemedText type="smallBold">
                 {comment.author?.full_name ?? 'Member'}
                 <ThemedText type="small" themeColor="textSecondary">
@@ -255,12 +299,30 @@ export default function PostScreen() {
                 </ThemedText>
               </ThemedText>
               <ThemedText type="small">{comment.body}</ThemedText>
+              {isDoubt && isAuthor && comment.author_id !== session?.user.id && (
+                <Pressable onPress={() => toggleAccepted(comment.id)} style={styles.action} hitSlop={6}>
+                  <Ionicons
+                    name={comment.id === post.accepted_comment_id ? 'close-circle-outline' : 'checkmark-circle-outline'}
+                    size={16}
+                    color={comment.id === post.accepted_comment_id ? theme.textSecondary : '#10B981'}
+                  />
+                  <ThemedText type="caption" style={{ color: comment.id === post.accepted_comment_id ? theme.textSecondary : '#10B981' }}>
+                    {comment.id === post.accepted_comment_id ? 'UNDO ACCEPT' : 'ACCEPT ANSWER'}
+                  </ThemedText>
+                </Pressable>
+              )}
               </View>
             </Pressable>
           ))}
 
-          <TextField value={draft} onChangeText={setDraft} placeholder="Write a comment" multiline style={styles.commentInput} />
-          <Button title="Comment" onPress={sendComment} loading={sending} disabled={!draft.trim()} />
+          <TextField
+            value={draft}
+            onChangeText={setDraft}
+            placeholder={isDoubt ? 'Write an answer' : 'Write a comment'}
+            multiline
+            style={styles.commentInput}
+          />
+          <Button title={isDoubt ? 'Answer' : 'Comment'} onPress={sendComment} loading={sending} disabled={!draft.trim()} />
         </ScrollView>
       </KeyboardAvoidingView>
     </ThemedView>
@@ -343,5 +405,8 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     minHeight: 64,
+  },
+  accepted: {
+    color: '#10B981',
   },
 });
